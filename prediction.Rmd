@@ -11,6 +11,12 @@ Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible t
 
 The goal of this project is to predict the manner in which they did the exercise.
 
+```{r message=FALSE}
+library(caret)
+library(rpart)
+library(randomForest)
+```
+
 ## Dataset
 
 Loading the training set and test set.
@@ -24,7 +30,6 @@ Removing missing values.
 
 ``` {r}
 train <- train[, colSums(is.na(train)) == 0]
-test <- test[, colSums(is.na(test)) == 0]
 ```
 
 ``` {r}
@@ -39,46 +44,48 @@ irrelevant_variables <- c(
   "cvtd_timestamp", "new_window", "num_window"
 )
 train <- train[ , -which(names(train) %in% irrelevant_variables)]
-test <- test[ , -which(names(test) %in% irrelevant_variables)]
 ```
 
 ## Model
 
 Splitting the training data into a 70% training set and a 30% validation set
 
-```{r cache=TRUE}
-library(caret)
-```
-
-``` {r, cache=TRUE}
+```{r}
 set.seed(8)
 trainset <- createDataPartition(train$classe, p=0.7, list = FALSE)
-train <- data[trainset,]
-valid <- data[-trainset,]
+train <- train[trainset,]
+valid <- train[-trainset,]
 ```
 
-Training the model with a random forest regression because of its high accuracy. Also a 5-fold cross-validation is used to validate the model.
+Training the model with a decision tree and a random forest classification. Also a 5-fold cross-validation is used to validate the random forest model.
 
-```{r cache=TRUE}
+```{r}
+dTreeModel <- rpart(classe ~ ., data=train, method="class")
+```
+
+```{r}
 cv <- trainControl(method="cv", number=5, verboseIter=FALSE)
-model <- train(classe ~ ., data = train, method="rf", trControl = cv, importance = TRUE)
+rfModel <- randomForest(classe ~ ., data = train, ntree = 5, trControl = cv, proximity = TRUE)
 ```
 
 Validate the model by predicting the values for the validation set
 
-```{r cache=TRUE}
-predictions <- confusionMatrix(valid$classe, predict(model, valid))
-predictions$table
+```{r}
+cmValidDT <- confusionMatrix(predict(dTreeModel, valid, type = "class"), valid$classe)
+cmValidDT$table
+```
+
+```{r}
+cmValidRF <- confusionMatrix(predict(rfModel, valid), valid$classe)
+cmValidRF$table
 ```
 
 ## Prediction
 
+Choosing the random forest classification because of its higher accuracy.
 Making predictions for the test set
 
-```{r cache=TRUE}
-predictions <- confusionMatrix(test$classe, predict(model, test))
-predictions$table
+```{r}
+predictions <- predict(rfModel, test)
+print(predictions)
 ```
-
-
-
